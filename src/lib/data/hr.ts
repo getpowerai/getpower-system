@@ -20,12 +20,16 @@ export interface ManpowerRequest {
     requesterId: string;
     type: "General" | "Temporary";
     startDate: string;
-    endDate: string;
-    estimatedHours?: string;
+    endDate?: string; // Optional for General
+    estimatedHours?: string; // Optional for Temporary
+    jobDescription?: string; // For General
+    ageRange?: string; // For General
+    education?: string; // For General
+    experience?: string; // For General
     purpose: string;
-    projectIds: string[]; // Can be specific or non-specific
+    projectIds: string[];
     status: "Pending" | "Approved" | "Rejected";
-    costAllocation?: Record<string, number>; // ProjectId -> Percentage
+    costAllocation?: Record<string, number>;
 }
 
 export const mockEmployees: Employee[] = [

@@ -15,6 +15,10 @@ export default function ManpowerPage() {
     const [endDate, setEndDate] = useState("");
     const [estimatedHours, setEstimatedHours] = useState("");
     const [purpose, setPurpose] = useState("");
+    const [jobDescription, setJobDescription] = useState("");
+    const [ageRange, setAgeRange] = useState("");
+    const [education, setEducation] = useState("");
+    const [experience, setExperience] = useState("");
     const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
 
     const toggleProject = (id: string) => {
@@ -33,8 +37,12 @@ export default function ManpowerPage() {
             requesterId: "e1", // Default to current mock user
             type: requestType,
             startDate,
-            endDate,
-            estimatedHours,
+            endDate: requestType === "Temporary" ? endDate : undefined,
+            estimatedHours: requestType === "Temporary" ? estimatedHours : undefined,
+            jobDescription: requestType === "General" ? jobDescription : undefined,
+            ageRange: requestType === "General" ? ageRange : undefined,
+            education: requestType === "General" ? education : undefined,
+            experience: requestType === "General" ? experience : undefined,
             purpose,
             projectIds: selectedProjects,
             status: "Pending"
@@ -48,6 +56,10 @@ export default function ManpowerPage() {
         setEndDate("");
         setEstimatedHours("");
         setPurpose("");
+        setJobDescription("");
+        setAgeRange("");
+        setEducation("");
+        setExperience("");
         setSelectedProjects([]);
         setRequestType("Temporary");
     };
@@ -109,12 +121,20 @@ export default function ManpowerPage() {
                                                 </span>
                                             </td>
                                             <td className="py-6 text-slate-300">
-                                                {req.startDate.slice(5).replace('-', '.')} - {req.endDate.slice(5).replace('-', '.')}
+                                                {req.type === "Temporary"
+                                                    ? `${req.startDate.slice(5).replace('-', '.')} - ${req.endDate?.slice(5).replace('-', '.')}`
+                                                    : `預計進用: ${req.startDate}`}
                                             </td>
                                             <td className="py-6 text-slate-300 font-medium">
-                                                {req.estimatedHours ? `${req.estimatedHours} 小時` : "-"}
+                                                {req.type === "Temporary"
+                                                    ? (req.estimatedHours ? `${req.estimatedHours} 小時` : "-")
+                                                    : "常駐人力"}
                                             </td>
-                                            <td className="py-6 text-slate-300 font-medium">{req.purpose}</td>
+                                            <td className="py-6 text-slate-300 font-medium">
+                                                <div className="max-w-xs truncate">
+                                                    {req.type === "General" ? req.jobDescription : req.purpose}
+                                                </div>
+                                            </td>
                                             <td className="py-6">
                                                 <div className="flex flex-wrap gap-1">
                                                     {req.projectIds.map(pid => {
@@ -178,51 +198,120 @@ export default function ManpowerPage() {
                                 ))}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-400 mb-2">可開始時間</label>
-                                    <input
-                                        type="date"
-                                        value={startDate}
-                                        onChange={(e) => setStartDate(e.target.value)}
-                                        className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-400 mb-2">完成期限</label>
-                                    <input
-                                        type="date"
-                                        value={endDate}
-                                        onChange={(e) => setEndDate(e.target.value)}
-                                        className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white"
-                                    />
-                                </div>
-                            </div>
+                            {requestType === "Temporary" ? (
+                                <>
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-400 mb-2">可開始時間</label>
+                                            <input
+                                                type="date"
+                                                value={startDate}
+                                                onChange={(e) => setStartDate(e.target.value)}
+                                                className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-400 mb-2">完成期限</label>
+                                            <input
+                                                type="date"
+                                                value={endDate}
+                                                onChange={(e) => setEndDate(e.target.value)}
+                                                className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white"
+                                            />
+                                        </div>
+                                    </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-2">預計工作時數 (小時)</label>
-                                <select
-                                    value={estimatedHours}
-                                    onChange={(e) => setEstimatedHours(e.target.value)}
-                                    className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white appearance-none cursor-pointer"
-                                >
-                                    <option value="" disabled>請選擇預計時數...</option>
-                                    {[1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24].map(h => (
-                                        <option key={h} value={h}>{h} 小時</option>
-                                    ))}
-                                    <option value="24+">超過 24 小時</option>
-                                </select>
-                            </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-400 mb-2">預計工作時數 (小時)</label>
+                                        <select
+                                            value={estimatedHours}
+                                            onChange={(e) => setEstimatedHours(e.target.value)}
+                                            className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white appearance-none cursor-pointer"
+                                        >
+                                            <option value="" disabled>請選擇預計時數...</option>
+                                            {[1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24].map(h => (
+                                                <option key={h} value={h}>{h} 小時</option>
+                                            ))}
+                                            <option value="24+">超過 24 小時</option>
+                                        </select>
+                                    </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-2">需求目的說明</label>
-                                <textarea
-                                    value={purpose}
-                                    onChange={(e) => setPurpose(e.target.value)}
-                                    className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white h-24 resize-none"
-                                    placeholder="例如：將公司材料載運至施工現場..."
-                                />
-                            </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-400 mb-2">需求目的說明</label>
+                                        <textarea
+                                            value={purpose}
+                                            onChange={(e) => setPurpose(e.target.value)}
+                                            className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white h-24 resize-none"
+                                            placeholder="例如：將公司材料載運至施工現場..."
+                                        />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-400 mb-2">預計進用日期</label>
+                                        <input
+                                            type="date"
+                                            value={startDate}
+                                            onChange={(e) => setStartDate(e.target.value)}
+                                            className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-400 mb-2">工作內容詳細描述 (AI 將根據此描述進行履歷篩選)</label>
+                                        <textarea
+                                            value={jobDescription}
+                                            onChange={(e) => setJobDescription(e.target.value)}
+                                            className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white h-32 resize-none"
+                                            placeholder="請詳細描述此職位的具體工作內容、日常職責、專案目標等，資訊越豐富 AI 篩選結果越精確..."
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-400 mb-2">年齡/經驗範圍</label>
+                                            <input
+                                                type="text"
+                                                value={ageRange}
+                                                onChange={(e) => setAgeRange(e.target.value)}
+                                                className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white"
+                                                placeholder="例: 25-45 歲"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-400 mb-2">學歷要求</label>
+                                            <input
+                                                type="text"
+                                                value={education}
+                                                onChange={(e) => setEducation(e.target.value)}
+                                                className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white"
+                                                placeholder="例: 電機相關碩士"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-400 mb-2">工作年資</label>
+                                            <input
+                                                type="text"
+                                                value={experience}
+                                                onChange={(e) => setExperience(e.target.value)}
+                                                className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white"
+                                                placeholder="例: 3 年以上"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-400 mb-2">其他具體相關經驗 (選填)</label>
+                                        <textarea
+                                            value={purpose}
+                                            onChange={(e) => setPurpose(e.target.value)}
+                                            className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white h-20 resize-none"
+                                            placeholder="例: 具備太陽能電廠建置經驗、熟悉台電申辦流程等..."
+                                        />
+                                    </div>
+                                </>
+                            )}
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-400 mb-2">關聯專案案場 (可多選，用於成本分攤)</label>
