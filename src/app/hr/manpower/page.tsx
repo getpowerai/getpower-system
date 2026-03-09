@@ -171,7 +171,7 @@ export default function ManpowerPage() {
                         className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
                         onClick={() => setIsRequestModalOpen(false)}
                     ></div>
-                    <div className="glass w-full max-w-2xl rounded-[2.5rem] p-8 md:p-10 border-white/10 shadow-2xl relative animate-in fade-in zoom-in duration-300">
+                    <div className="glass w-full max-w-2xl rounded-[2.5rem] p-8 md:p-10 border-white/10 shadow-2xl relative animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto custom-scrollbar">
                         <div className="flex justify-between items-center mb-8">
                             <h2 className="text-2xl font-bold">提出人力需求申請</h2>
                             <button onClick={() => setIsRequestModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
