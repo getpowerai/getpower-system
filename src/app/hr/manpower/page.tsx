@@ -313,34 +313,36 @@ export default function ManpowerPage() {
                                 </>
                             )}
 
-                            <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-2">關聯專案案場 (可多選，用於成本分攤)</label>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                                    {mockSalesProjects.map(p => (
+                            {requestType === "Temporary" && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-2">關聯專案案場 (可多選，用於成本分攤)</label>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                                        {mockSalesProjects.map(p => (
+                                            <button
+                                                key={p.id}
+                                                type="button"
+                                                onClick={() => toggleProject(p.id)}
+                                                className={`p-3 rounded-xl border text-left text-xs transition-all ${selectedProjects.includes(p.id)
+                                                    ? "bg-emerald-500/20 border-emerald-500 text-emerald-400"
+                                                    : "bg-slate-900 border-white/5 text-slate-500"
+                                                    }`}
+                                            >
+                                                {p.projectName}
+                                            </button>
+                                        ))}
                                         <button
-                                            key={p.id}
                                             type="button"
-                                            onClick={() => toggleProject(p.id)}
-                                            className={`p-3 rounded-xl border text-left text-xs transition-all ${selectedProjects.includes(p.id)
-                                                ? "bg-emerald-500/20 border-emerald-500 text-emerald-400"
-                                                : "bg-slate-900 border-white/5 text-slate-500"
+                                            onClick={() => toggleProject("non-specific")}
+                                            className={`p-3 rounded-xl border text-left text-xs transition-all ${selectedProjects.includes("non-specific")
+                                                ? "bg-blue-500/20 border-blue-500 text-blue-400"
+                                                : "bg-slate-900 border-white/5 text-slate-400 font-bold"
                                                 }`}
                                         >
-                                            {p.projectName}
+                                            + 非特定專案 (公司行政)
                                         </button>
-                                    ))}
-                                    <button
-                                        type="button"
-                                        onClick={() => toggleProject("non-specific")}
-                                        className={`p-3 rounded-xl border text-left text-xs transition-all ${selectedProjects.includes("non-specific")
-                                            ? "bg-blue-500/20 border-blue-500 text-blue-400"
-                                            : "bg-slate-900 border-white/5 text-slate-400 font-bold"
-                                            }`}
-                                    >
-                                        + 非特定專案 (公司行政)
-                                    </button>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             <button
                                 type="submit"
