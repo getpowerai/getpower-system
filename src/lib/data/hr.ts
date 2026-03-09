@@ -13,6 +13,28 @@ export interface TrainingCourse {
     duration: string;
     description: string;
     thumbnail?: string;
+    videoUrl?: string; // NEW: Link to video教材
+    trainerId: string; // NEW: Assigned evaluator
+}
+
+export type TrainingStatus = "Pending" | "InProgress" | "Passed" | "Failed";
+
+export interface TrainingAssignment {
+    courseId: string;
+    status: TrainingStatus;
+    score?: number;
+    comments?: string;
+    attempts: number;
+    assignedDate: string;
+    completedDate?: string;
+}
+
+export interface TrainingPlan {
+    id: string;
+    employeeId: string;
+    assignments: TrainingAssignment[];
+    chiefTrainerId: string; // The person overseeing the overall plan
+    status: "Active" | "Completed";
 }
 
 export interface ManpowerRequest {
@@ -44,22 +66,63 @@ export const mockCourses: TrainingCourse[] = [
         title: "業務開發進階技巧",
         department: "Sales",
         duration: "2小時",
-        description: "針對太陽能案場開發的洽談與簽約實務。"
+        description: "針對太陽能案場開發的洽談與簽約實務。",
+        videoUrl: "https://example.com/videos/sales-1.mp4",
+        trainerId: "e1"
     },
     {
         id: "c2",
         title: "台電併網申請流程",
         department: "Design",
         duration: "1.5小時",
-        description: "最新併網技術規範與審查要點解析。"
+        description: "最新併網技術規範與審查要點解析。",
+        videoUrl: "https://example.com/videos/design-1.mp4",
+        trainerId: "e2"
     },
     {
         id: "c3",
         title: "施工現場安全管理",
         department: "Engineering",
         duration: "3小時",
-        description: "高空作業與電氣設備安全標準作業程序。"
+        description: "高空作業與電氣設備安全標準作業程序。",
+        videoUrl: "https://example.com/videos/eng-1.mp4",
+        trainerId: "e1"
     },
+];
+
+export const mockTrainingPlans: TrainingPlan[] = [
+    {
+        id: "tp1",
+        employeeId: "e4", // 新進員工 ID (假設)
+        chiefTrainerId: "e3",
+        status: "Active",
+        assignments: [
+            {
+                courseId: "c1",
+                status: "Passed",
+                score: 85,
+                comments: "表現優異，對合約細節掌握度高。",
+                attempts: 1,
+                assignedDate: "2024-03-01",
+                completedDate: "2024-03-05"
+            },
+            {
+                courseId: "c2",
+                status: "Failed",
+                score: 55,
+                comments: "對併網規範理解尚有不足，需重新觀看影片並複習第3章。",
+                attempts: 1,
+                assignedDate: "2024-03-06",
+                completedDate: "2024-03-07"
+            },
+            {
+                courseId: "c3",
+                status: "Pending",
+                attempts: 0,
+                assignedDate: "2024-03-08"
+            }
+        ]
+    }
 ];
 
 export const mockManpowerRequests: ManpowerRequest[] = [
