@@ -21,6 +21,7 @@ export interface ManpowerRequest {
     type: "General" | "Temporary";
     startDate: string;
     endDate: string;
+    estimatedHours?: string;
     purpose: string;
     projectIds: string[]; // Can be specific or non-specific
     status: "Pending" | "Approved" | "Rejected";

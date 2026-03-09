@@ -13,6 +13,7 @@ export default function ManpowerPage() {
     const [requestType, setRequestType] = useState<"General" | "Temporary">("Temporary");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
+    const [estimatedHours, setEstimatedHours] = useState("");
     const [purpose, setPurpose] = useState("");
     const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
 
@@ -33,6 +34,7 @@ export default function ManpowerPage() {
             type: requestType,
             startDate,
             endDate,
+            estimatedHours,
             purpose,
             projectIds: selectedProjects,
             status: "Pending"
@@ -44,6 +46,7 @@ export default function ManpowerPage() {
         // Reset form
         setStartDate("");
         setEndDate("");
+        setEstimatedHours("");
         setPurpose("");
         setSelectedProjects([]);
         setRequestType("Temporary");
@@ -87,7 +90,8 @@ export default function ManpowerPage() {
                                 <thead>
                                     <tr className="border-b border-white/5 text-slate-500 text-sm">
                                         <th className="pb-4 font-medium">類型</th>
-                                        <th className="pb-4 font-medium">時間範圍</th>
+                                        <th className="pb-4 font-medium">時間範圍 / 期限</th>
+                                        <th className="pb-4 font-medium">預計時數</th>
                                         <th className="pb-4 font-medium">目的說明</th>
                                         <th className="pb-4 font-medium">關聯專案</th>
                                         <th className="pb-4 font-medium">狀態</th>
@@ -98,14 +102,17 @@ export default function ManpowerPage() {
                                         <tr key={req.id} className="border-b border-white/5 group">
                                             <td className="py-6">
                                                 <span className={`px-2 py-1 rounded text-[10px] font-bold ${req.type === "Temporary"
-                                                        ? "bg-amber-500/10 text-amber-500"
-                                                        : "bg-blue-500/10 text-blue-400"
+                                                    ? "bg-amber-500/10 text-amber-500"
+                                                    : "bg-blue-500/10 text-blue-400"
                                                     }`}>
                                                     {req.type === "Temporary" ? "臨時需求" : "一般需求"}
                                                 </span>
                                             </td>
                                             <td className="py-6 text-slate-300">
                                                 {req.startDate.slice(5).replace('-', '.')} - {req.endDate.slice(5).replace('-', '.')}
+                                            </td>
+                                            <td className="py-6 text-slate-300 font-medium">
+                                                {req.estimatedHours ? `${req.estimatedHours} 小時` : "-"}
                                             </td>
                                             <td className="py-6 text-slate-300 font-medium">{req.purpose}</td>
                                             <td className="py-6">
@@ -173,7 +180,7 @@ export default function ManpowerPage() {
 
                             <div className="grid grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-400 mb-2">開始時間</label>
+                                    <label className="block text-sm font-medium text-slate-400 mb-2">可開始時間</label>
                                     <input
                                         type="date"
                                         value={startDate}
@@ -182,7 +189,7 @@ export default function ManpowerPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-400 mb-2">結束時間</label>
+                                    <label className="block text-sm font-medium text-slate-400 mb-2">完成期限</label>
                                     <input
                                         type="date"
                                         value={endDate}
@@ -190,6 +197,21 @@ export default function ManpowerPage() {
                                         className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white"
                                     />
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-2">預計工作時數 (小時)</label>
+                                <select
+                                    value={estimatedHours}
+                                    onChange={(e) => setEstimatedHours(e.target.value)}
+                                    className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white appearance-none cursor-pointer"
+                                >
+                                    <option value="" disabled>請選擇預計時數...</option>
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24].map(h => (
+                                        <option key={h} value={h}>{h} 小時</option>
+                                    ))}
+                                    <option value="24+">超過 24 小時</option>
+                                </select>
                             </div>
 
                             <div>
