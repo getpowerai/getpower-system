@@ -122,7 +122,7 @@ export default function ManpowerPage() {
                                             </td>
                                             <td className="py-6 text-slate-300">
                                                 {req.type === "Temporary"
-                                                    ? `${req.startDate.slice(5).replace('-', '.')} - ${req.endDate?.slice(5).replace('-', '.')}`
+                                                    ? `${req.startDate.slice(5).replace('-', '.')} - ${req.endDate ? req.endDate.slice(5).replace('-', '.') : ''}`
                                                     : `預計進用: ${req.startDate}`}
                                             </td>
                                             <td className="py-6 text-slate-300 font-medium">
