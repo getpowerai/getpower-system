@@ -6,10 +6,13 @@ export interface Milestone {
     submitDate?: string;
     completeDate?: string;
     expectedDate?: string;
+    startDate?: string;
+    endDate?: string;
     submissionFile?: string;
     submissionFilesHistory?: string[];
     approvalFile?: string;
     approvalFilesHistory?: string[];
+    drawingFile?: string;
 }
 
 export interface ProjectProcess {
@@ -38,12 +41,13 @@ export const mockProcesses: ProjectProcess[] = [
             { id: "m4", label: "台電細部協商", stage: "Utility", status: "Pending" },
             { id: "m5", label: "購電簽約 (PPA)", stage: "Utility", status: "Pending" },
             { id: "m_elec_dwg", label: "電力施工圖說", stage: "Utility", status: "Pending" },
+            { id: "m7_p", label: "電力進場施工", stage: "Utility", status: "Pending" },
+            { id: "m10", label: "完工/試運轉", stage: "Utility", status: "Pending" },
+            { id: "m11", label: "台電掛表", stage: "Utility", status: "Pending" },
             { id: "m6", label: "建管免雜備查/雜照", stage: "Permit", status: "Pending" },
             { id: "m_struct_dwg", label: "結構施工圖說", stage: "Permit", status: "Pending" },
-            { id: "m7", label: "進場施工流程", stage: "Construction", status: "Pending" },
-            { id: "m10", label: "完工/試運轉", stage: "Construction", status: "Pending" },
-            { id: "m11", label: "台電掛表", stage: "Finalization", status: "Pending" },
-            { id: "m12", label: "免雜竣工", stage: "Finalization", status: "Pending" },
+            { id: "m7_s", label: "結構進場施工", stage: "Permit", status: "Pending" },
+            { id: "m12", label: "免雜竣工", stage: "Permit", status: "Pending" },
             { id: "m13", label: "設備登記", stage: "Finalization", status: "Pending" },
             { id: "m14", label: "開始躉售", stage: "Finalization", status: "Pending" },
         ]
@@ -60,12 +64,13 @@ export const mockProcesses: ProjectProcess[] = [
             { id: "m4", label: "台電細部協商", stage: "Utility", status: "Pending" },
             { id: "m5", label: "購電簽約 (PPA)", stage: "Utility", status: "Pending" },
             { id: "m_elec_dwg", label: "電力施工圖說", stage: "Utility", status: "Pending" },
+            { id: "m7_p", label: "電力進場施工", stage: "Utility", status: "Pending" },
+            { id: "m10", label: "完工/試運轉", stage: "Utility", status: "Pending" },
+            { id: "m11", label: "台電掛表", stage: "Utility", status: "Pending" },
             { id: "m6", label: "建管免雜備查/雜照", stage: "Permit", status: "Pending" },
             { id: "m_struct_dwg", label: "結構施工圖說", stage: "Permit", status: "Pending" },
-            { id: "m7", label: "進場施工流程", stage: "Construction", status: "Pending" },
-            { id: "m10", label: "完工/試運轉", stage: "Construction", status: "Pending" },
-            { id: "m11", label: "台電掛表", stage: "Finalization", status: "Pending" },
-            { id: "m12", label: "免雜竣工", stage: "Finalization", status: "Pending" },
+            { id: "m7_s", label: "結構進場施工", stage: "Permit", status: "Pending" },
+            { id: "m12", label: "免雜竣工", stage: "Permit", status: "Pending" },
             { id: "m13", label: "設備登記", stage: "Finalization", status: "Pending" },
             { id: "m14", label: "開始躉售", stage: "Finalization", status: "Pending" },
         ]
@@ -81,12 +86,13 @@ export const mockProcesses: ProjectProcess[] = [
             { id: "m4", label: "台電細部協商", stage: "Utility", status: "Pending" },
             { id: "m5", label: "購電簽約 (PPA)", stage: "Utility", status: "Pending" },
             { id: "m_elec_dwg", label: "電力施工圖說", stage: "Utility", status: "Pending" },
+            { id: "m7_p", label: "電力進場施工", stage: "Utility", status: "Pending" },
+            { id: "m10", label: "完工/試運轉", stage: "Utility", status: "Pending" },
+            { id: "m11", label: "台電掛表", stage: "Utility", status: "Pending" },
             { id: "m6", label: "建管免雜備查/雜照", stage: "Permit", status: "Pending" },
             { id: "m_struct_dwg", label: "結構施工圖說", stage: "Permit", status: "Pending" },
-            { id: "m7", label: "進場施工流程", stage: "Construction", status: "Pending" },
-            { id: "m10", label: "完工/試運轉", stage: "Construction", status: "Pending" },
-            { id: "m11", label: "台電掛表", stage: "Finalization", status: "Pending" },
-            { id: "m12", label: "免雜竣工", stage: "Finalization", status: "Pending" },
+            { id: "m7_s", label: "結構進場施工", stage: "Permit", status: "Pending" },
+            { id: "m12", label: "免雜竣工", stage: "Permit", status: "Pending" },
             { id: "m13", label: "設備登記", stage: "Finalization", status: "Pending" },
             { id: "m14", label: "開始躉售", stage: "Finalization", status: "Pending" },
         ]
@@ -102,12 +108,13 @@ export const mockProcesses: ProjectProcess[] = [
             { id: "m4", label: "台電細部協商", stage: "Utility", status: "Pending" },
             { id: "m5", label: "購電簽約 (PPA)", stage: "Utility", status: "Pending" },
             { id: "m_elec_dwg", label: "電力施工圖說", stage: "Utility", status: "Pending" },
+            { id: "m7_p", label: "電力進場施工", stage: "Utility", status: "Pending" },
+            { id: "m10", label: "完工/試運轉", stage: "Utility", status: "Pending" },
+            { id: "m11", label: "台電掛表", stage: "Utility", status: "Pending" },
             { id: "m6", label: "建管免雜備查/雜照", stage: "Permit", status: "Pending" },
             { id: "m_struct_dwg", label: "結構施工圖說", stage: "Permit", status: "Pending" },
-            { id: "m7", label: "進場施工流程", stage: "Construction", status: "Pending" },
-            { id: "m10", label: "完工/試運轉", stage: "Construction", status: "Pending" },
-            { id: "m11", label: "台電掛表", stage: "Finalization", status: "Pending" },
-            { id: "m12", label: "免雜竣工", stage: "Finalization", status: "Pending" },
+            { id: "m7_s", label: "結構進場施工", stage: "Permit", status: "Pending" },
+            { id: "m12", label: "免雜竣工", stage: "Permit", status: "Pending" },
             { id: "m13", label: "設備登記", stage: "Finalization", status: "Pending" },
             { id: "m14", label: "開始躉售", stage: "Finalization", status: "Pending" },
         ]
@@ -124,12 +131,13 @@ export const mockProcesses: ProjectProcess[] = [
             { id: "m4", label: "台電細部協商", stage: "Utility", status: "Completed", completeDate: "2023-12-01" },
             { id: "m5", label: "購電簽約 (PPA)", stage: "Utility", status: "Completed", completeDate: "2023-12-10" },
             { id: "m_elec_dwg", label: "電力施工圖說", stage: "Utility", status: "Completed", completeDate: "2023-12-15" },
+            { id: "m7_p", label: "電力進場施工", stage: "Utility", status: "Completed", completeDate: "2024-02-15" },
+            { id: "m10", label: "完工/試運轉", stage: "Utility", status: "Completed", completeDate: "2024-02-20" },
+            { id: "m11", label: "台電掛表", stage: "Utility", status: "Completed", completeDate: "2024-02-25" },
             { id: "m6", label: "建管免雜備查/雜照", stage: "Permit", status: "Completed", completeDate: "2024-01-05" },
             { id: "m_struct_dwg", label: "結構施工圖說", stage: "Permit", status: "Completed", completeDate: "2024-01-10" },
-            { id: "m7", label: "進場施工流程", stage: "Construction", status: "Completed", completeDate: "2024-02-15" },
-            { id: "m10", label: "完工/試運轉", stage: "Construction", status: "Completed", completeDate: "2024-02-20" },
-            { id: "m11", label: "台電掛表", stage: "Finalization", status: "Completed", completeDate: "2024-02-25" },
-            { id: "m12", label: "免雜竣工", stage: "Finalization", status: "Completed", completeDate: "2024-02-26" },
+            { id: "m7_s", label: "結構進場施工", stage: "Permit", status: "Completed", completeDate: "2024-02-15" },
+            { id: "m12", label: "免雜竣工", stage: "Permit", status: "Completed", completeDate: "2024-02-26" },
             { id: "m13", label: "設備登記", stage: "Finalization", status: "Completed", completeDate: "2024-02-28" },
             { id: "m14", label: "開始躉售", stage: "Finalization", status: "Completed", completeDate: "2025-01-15" },
         ]

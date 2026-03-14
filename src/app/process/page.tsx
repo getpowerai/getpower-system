@@ -5,6 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import { mockProcesses, Milestone, ProjectProcess } from "@/lib/data/process";
 import { mockSalesProjects, mockCustomers, SalesProject } from "@/lib/data/sales";
 import { dispatchGPLineMessage } from "@/lib/utils/gpline";
+import { ConstructionLog, TestRunReport } from "@/lib/data/engineering";
 
 const stageColors = {
     Regulatory: "bg-purple-500",
@@ -14,14 +15,17 @@ const stageColors = {
     Finalization: "bg-rose-500",
 };
 
-function MilestoneNode({ milestone, onClick }: { milestone: Milestone & { drawingFile?: string }, onClick?: () => void }) {
+function MilestoneNode({ milestone, onClick }: { milestone: Milestone, onClick?: () => void }) {
     const isDone = milestone.status === "Completed";
     const isInProgress = milestone.status === "In-Progress";
 
+    const isUnclickable = ["電力施工圖說", "結構施工圖說", "電力進場施工", "結構進場施工", "完工/試運轉", "台電掛表"].includes(milestone.label);
+    const effectiveOnClick = isUnclickable ? undefined : onClick;
+
     return (
         <div
-            onClick={onClick}
-            className={`flex flex-col items-center group shrink-0 w-32 ${onClick ? "cursor-pointer" : ""}`}
+            onClick={effectiveOnClick}
+            className={`flex flex-col items-center group shrink-0 w-32 ${effectiveOnClick ? "cursor-pointer" : ""}`}
         >
             <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center mb-2 z-10 transition-all duration-500 group-hover:scale-110 ${isDone ? "bg-emerald-500 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]" :
                 isInProgress ? "bg-slate-900 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)] animate-pulse" :
@@ -48,6 +52,12 @@ function MilestoneNode({ milestone, onClick }: { milestone: Milestone & { drawin
                     {milestone.completeDate && (
                         <span className="text-[8px] text-emerald-500 font-mono">C: {milestone.completeDate}</span>
                     )}
+                    {milestone.startDate && (
+                        <span className="text-[8px] text-cyan-500 font-mono">Start: {milestone.startDate}</span>
+                    )}
+                    {milestone.endDate && (
+                        <span className="text-[8px] text-cyan-600 font-mono">End: {milestone.endDate}</span>
+                    )}
                     {milestone.drawingFile && (
                         <a
                             href="#"
@@ -56,6 +66,26 @@ function MilestoneNode({ milestone, onClick }: { milestone: Milestone & { drawin
                             title={milestone.drawingFile}
                         >
                             下載圖面
+                        </a>
+                    )}
+                    {milestone.submissionFile && (
+                        <a
+                            href="#"
+                            onClick={(e) => { e.stopPropagation(); alert(`開始下載: ${milestone.submissionFile}`); }}
+                            className="mt-2 text-[9px] bg-amber-500/10 text-amber-400 px-2 py-1 rounded cursor-pointer hover:bg-amber-500 hover:text-white transition-colors block border border-amber-500/20 shadow-sm shadow-amber-500/10 truncate max-w-full overflow-hidden whitespace-nowrap"
+                            title={milestone.submissionFile}
+                        >
+                            下載送件資料
+                        </a>
+                    )}
+                    {milestone.approvalFile && (
+                        <a
+                            href="#"
+                            onClick={(e) => { e.stopPropagation(); alert(`開始下載: ${milestone.approvalFile}`); }}
+                            className="mt-2 text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded cursor-pointer hover:bg-emerald-500 hover:text-white transition-colors block border border-emerald-500/20 shadow-sm shadow-emerald-500/10 truncate max-w-full overflow-hidden whitespace-nowrap"
+                            title={milestone.approvalFile}
+                        >
+                            下載核准函/報告
                         </a>
                     )}
                 </div>
@@ -72,7 +102,7 @@ function ParallelTrack({ title, milestones, colorClass, onMilestoneClick }: {
 }) {
     return (
         <div className="flex flex-col gap-4 p-6 bg-white/5 rounded-3xl border border-white/5 relative mt-3">
-            <div className={`absolute top-0 left-6 -translate-y-1/2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-white/10 ${colorClass}`}>
+            <div className={`absolute top-0 left-6 -translate-y-1/2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-white/10 ${colorClass} z-20`}>
                 {title}
             </div>
             <div className="flex items-start gap-0 overflow-x-visible relative">
@@ -108,19 +138,105 @@ export default function ProcessPage() {
     // but we primarily need the sales data.
     useEffect(() => {
         const saved = localStorage.getItem("gp_process_projects");
+        const savedLogs = localStorage.getItem("gp_engineering_logs");
+        const logs: ConstructionLog[] = savedLogs ? JSON.parse(savedLogs) : [];
+
+        let baseProjects: ProjectProcess[] = mockProcesses;
         if (saved) {
-            const savedProjects: ProjectProcess[] = JSON.parse(saved);
-            // Merge logic: ensure any mock projects missing from savedProjects are added
-            const mergedProjects = [...savedProjects];
-            mockProcesses.forEach(mockP => {
-                if (!mergedProjects.find(p => p.id === mockP.id)) {
-                    mergedProjects.push(mockP);
-                }
-            });
-            setProjects(mergedProjects);
-        } else {
-            setProjects(mockProcesses);
+            try {
+                baseProjects = JSON.parse(saved);
+            } catch (e) {
+                console.error("Failed to parse saved projects", e);
+            }
         }
+
+        const syncedProjects = baseProjects.map(p => {
+            const mockP = mockProcesses.find(mp => mp.id === p.id);
+            if (!mockP) return p;
+
+            const projectLogs = logs.filter(l => l.projectId === p.id);
+
+            const syncedMilestones = mockP.milestones.map(mockM => {
+                const savedM = p.milestones.find(m => m.id === mockM.id);
+
+                // Automatic sync dates from logs if it's a construction milestone
+                let autoStartDate = savedM?.startDate;
+                let autoEndDate = savedM?.endDate;
+                let autoStatus = savedM?.status || mockM.status;
+                let autoCompleteDate = savedM?.completeDate || mockM.completeDate;
+
+                if (mockM.label === "電力進場施工") {
+                    const powerLogs = projectLogs.filter(l => l.type === "電力").sort((a, b) => a.date.localeCompare(b.date));
+                    if (powerLogs.length > 0) {
+                        autoStartDate = powerLogs[0].date;
+
+                        // Check for completion
+                        if (powerLogs.some(l => l.isFinalEntry)) {
+                            autoStatus = "Completed";
+                            autoEndDate = powerLogs.find(l => l.isFinalEntry)?.date || powerLogs[powerLogs.length - 1].date;
+                            autoCompleteDate = autoEndDate;
+                        } else {
+                            autoStatus = "In-Progress";
+                            autoEndDate = undefined;
+                            autoCompleteDate = undefined;
+                        }
+                    } else {
+                        // Reset if no Power logs found
+                        autoStartDate = undefined;
+                        autoEndDate = undefined;
+                        autoStatus = mockM.status;
+                        autoCompleteDate = undefined;
+                    }
+                } else if (mockM.label === "結構進場施工") {
+                    const structLogs = projectLogs.filter(l => l.type === "結構").sort((a, b) => a.date.localeCompare(b.date));
+                    if (structLogs.length > 0) {
+                        autoStartDate = structLogs[0].date;
+
+                        // Check for completion
+                        if (structLogs.some(l => l.isFinalEntry)) {
+                            autoStatus = "Completed";
+                            autoEndDate = structLogs.find(l => l.isFinalEntry)?.date || structLogs[structLogs.length - 1].date;
+                            autoCompleteDate = autoEndDate;
+                        } else {
+                            autoStatus = "In-Progress";
+                            autoEndDate = undefined;
+                            autoCompleteDate = undefined;
+                        }
+                    } else {
+                        // Reset if no Structure logs found
+                        autoStartDate = undefined;
+                        autoEndDate = undefined;
+                        autoStatus = mockM.status;
+                        autoCompleteDate = undefined;
+                    }
+                }
+
+                // Keep status and dates from saved, but sync label and stage from mock
+                return {
+                    ...mockM,
+                    status: autoStatus,
+                    submitDate: savedM?.submitDate || mockM.submitDate,
+                    completeDate: autoCompleteDate,
+                    expectedDate: savedM?.expectedDate || mockM.expectedDate,
+                    startDate: autoStartDate,
+                    endDate: autoEndDate,
+                    drawingFile: savedM?.drawingFile || mockM.drawingFile,
+                    submissionFile: savedM?.submissionFile || mockM.submissionFile,
+                    approvalFile: savedM?.approvalFile || mockM.approvalFile
+                };
+            });
+
+            return { ...p, milestones: syncedMilestones, projectName: mockP.projectName };
+        });
+
+        // Also add any new mock projects
+        mockProcesses.forEach(mockP => {
+            if (!syncedProjects.find(p => p.id === mockP.id)) {
+                syncedProjects.push(mockP);
+            }
+        });
+
+        setProjects(syncedProjects);
         setIsLoaded(true);
     }, []);
 
@@ -134,6 +250,7 @@ export default function ProcessPage() {
     const [salesProjects, setSalesProjects] = useState<SalesProject[]>([]);
     const [engineeringDrawings, setEngineeringDrawings] = useState<any[]>([]);
     const [designDocuments, setDesignDocuments] = useState<any[]>([]);
+    const [testRunReports, setTestRunReports] = useState<TestRunReport[]>([]);
 
     useEffect(() => {
         const saved = localStorage.getItem("gp_sales_projects");
@@ -153,6 +270,11 @@ export default function ProcessPage() {
         const savedDesign = localStorage.getItem("gp_design_documents");
         if (savedDesign) {
             setDesignDocuments(JSON.parse(savedDesign));
+        }
+
+        const savedReports = localStorage.getItem("gp_engineering_reports");
+        if (savedReports) {
+            setTestRunReports(JSON.parse(savedReports));
         }
     }, [infoModalProjectId, selectedProjectId]); // Refresh when modal opens or project selection changes
 
@@ -208,11 +330,35 @@ export default function ProcessPage() {
                     }
                 }
             }
+
+            if (m.label === "完工/試運轉") {
+                const report = testRunReports.find(r => r.projectId === p.id);
+                if (report) {
+                    return {
+                        ...m,
+                        status: "Completed" as const,
+                        completeDate: report.date,
+                        approvalFile: report.name
+                    };
+                }
+            }
+
+            if (m.label === "台電掛表") {
+                const parReview = p.milestones.find(mm => mm.label === "台電併聯審查");
+                if (parReview && parReview.status === "Completed") {
+                    return {
+                        ...m,
+                        status: "Completed" as const,
+                        completeDate: parReview.completeDate
+                    };
+                }
+            }
+
             return m;
         });
 
         return { ...p, milestones: syncedMilestones };
-    }, [selectedProjectId, projects, engineeringDrawings, designDocuments]);
+    }, [selectedProjectId, projects, engineeringDrawings, designDocuments, testRunReports]);
 
     const toggleMilestoneStatus = (projectId: string, milestoneId: string) => {
         const project = projects.find(p => p.id === projectId);
@@ -224,12 +370,19 @@ export default function ProcessPage() {
             return;
         }
 
-        // Disable toggling for Engineering drawings
-        if (milestone?.label === "電力施工圖說" || milestone?.label === "結構施工圖說") {
+        // Disable toggling for Engineering drawings and Construction and Test run
+        if (
+            milestone?.label === "電力施工圖說" ||
+            milestone?.label === "結構施工圖說" ||
+            milestone?.label === "電力進場施工" ||
+            milestone?.label === "結構進場施工" ||
+            milestone?.label === "完工/試運轉" ||
+            milestone?.label === "台電掛表"
+        ) {
             return;
         }
 
-        const interactiveMilestones = ["台電併聯審查", "同意備案", "購電簽約 (PPA)", "台電細部協商", "建管免雜備查/雜照"];
+        const interactiveMilestones = ["台電併聯審查", "同意備案", "購電簽約 (PPA)", "台電細部協商", "建管免雜備查/雜照", "設備登記", "開始躉售"];
         if (interactiveMilestones.includes(milestone?.label || "")) {
             setActiveMilestoneModal({ projectId, milestoneId });
             setExpectedDateStr(milestone?.expectedDate || "");
@@ -281,7 +434,7 @@ export default function ProcessPage() {
                 if (m.id !== activeMilestoneModal.milestoneId) return m;
 
                 const today = new Date().toISOString().split('T')[0];
-                let update: Partial<Milestone> = { expectedDate: expectedDateStr || undefined };
+                const update: Partial<Milestone> = { expectedDate: expectedDateStr || undefined };
                 let nextStatus = m.status;
 
                 // Handle file upload based on label
@@ -292,7 +445,7 @@ export default function ProcessPage() {
                         update.approvalFilesHistory = [...(m.approvalFilesHistory || []), uploadFile.name];
                         nextStatus = "Completed";
                         dispatchGPLineMessage(activeMilestoneModal.projectId, `已上傳合約檔案 "${uploadFile.name}"，「${m.label}」狀態更新為：已完成`);
-                    } else if (m.label === "台電併聯審查" || m.label === "同意備案") {
+                    } else if (m.label === "台電併聯審查" || m.label === "同意備案" || m.label === "設備登記" || m.label === "開始躉售") {
                         if (uploadFileType === "submission") {
                             update.submitDate = today;
                             update.submissionFile = uploadFile.name;
@@ -563,7 +716,6 @@ export default function ProcessPage() {
     const regulatory = p.milestones.filter(m => m.stage === "Regulatory");
     const utility = p.milestones.filter(m => m.stage === "Utility");
     const permit = p.milestones.filter(m => m.stage === "Permit");
-    const construction = p.milestones.filter(m => m.stage === "Construction");
     const finalization = p.milestones.filter(m => m.stage === "Finalization");
 
     return (
@@ -607,46 +759,28 @@ export default function ProcessPage() {
                             {/* 2. Parallel Tracks Area (Utility & Permit) */}
                             <div className="flex flex-col gap-8 pl-4">
                                 <ParallelTrack
-                                    title="電力"
+                                    title="電力工程"
                                     milestones={utility}
                                     colorClass="bg-blue-600/20 text-blue-400"
                                     onMilestoneClick={(mId) => toggleMilestoneStatus(p.id, mId)}
                                 />
                                 <ParallelTrack
-                                    title="結構"
+                                    title="結構工程"
                                     milestones={permit}
                                     colorClass="bg-emerald-600/20 text-emerald-400"
                                     onMilestoneClick={(mId) => toggleMilestoneStatus(p.id, mId)}
                                 />
                             </div>
 
-                            {/* 3. Combined Construction and Trial/Finalization */}
-                            <div className="flex items-center pl-12 relative">
-                                {/* Convergence indicator */}
-                                <div className="absolute left-0 top-1/2 -translate-y-1/2 h-32 w-12 border-y-2 border-l-2 border-white/5 rounded-l-2xl" />
+                            {/* 3. Final Shared track (Finalization) */}
+                            {finalization.length > 0 && (
+                                <div className="flex items-center pl-12 relative">
+                                    {/* Convergence indicator */}
+                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 h-32 w-12 border-y-2 border-l-2 border-white/5 rounded-l-2xl border-l-0 border-r-2 rounded-l-none rounded-r-2xl -translate-x-full" />
 
-                                <div className="flex items-start">
-                                    {/* CONSTRUCTION Milestone (Single node) */}
-                                    <div className="flex items-start px-4 gap-0">
-                                        {construction.filter(m => m.label === "進場施工流程").map(m => (
-                                            <div key={m.id} className="flex items-start">
-                                                <div className="w-8 h-[2px] bg-white/5 mt-6 hidden" />
-                                                <MilestoneNode milestone={m} onClick={() => toggleMilestoneStatus(p.id, m.id)} />
-                                                <div className="w-8 h-[2px] bg-white/5 mt-6" />
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Remaining Construction & Finalization Nodes */}
-                                    <div className="flex items-start gap-0">
-                                        {construction.filter(m => m.label !== "進場施工流程").map((m) => (
-                                            <div key={m.id} className="flex items-start">
-                                                <MilestoneNode milestone={m} onClick={() => toggleMilestoneStatus(p.id, m.id)} />
-                                                <div className="w-8 h-[2px] bg-white/5 mt-6" />
-                                            </div>
-                                        ))}
+                                    <div className="flex items-center">
                                         {finalization.map((m, idx) => (
-                                            <div key={m.id} className="flex items-start">
+                                            <div key={m.id} className="flex items-center">
                                                 <MilestoneNode milestone={m} onClick={() => toggleMilestoneStatus(p.id, m.id)} />
                                                 {idx < finalization.length - 1 && (
                                                     <div className="w-8 h-[2px] bg-white/5 mt-6" />
@@ -655,7 +789,7 @@ export default function ProcessPage() {
                                         ))}
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
 
@@ -668,6 +802,17 @@ export default function ProcessPage() {
                         </button>
                         <button className="bg-emerald-600/10 text-emerald-400 px-10 py-4 rounded-2xl text-sm font-bold border border-emerald-600/20 hover:bg-emerald-600 hover:text-white transition-all">
                             監工系統
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (confirm("確定要重置所有專案數據嗎？這將會清除您目前所有的狀態更新。")) {
+                                    localStorage.removeItem("gp_process_projects");
+                                    window.location.reload();
+                                }
+                            }}
+                            className="bg-red-600/10 text-red-400 px-6 py-4 rounded-2xl text-xs font-bold border border-red-600/20 hover:bg-red-600 hover:text-white transition-all ml-auto"
+                        >
+                            重置數據
                         </button>
                     </div>
                 </div>
@@ -814,14 +959,14 @@ export default function ProcessPage() {
                                 {/* Don't show upload specifically for Engineering ones */}
                                 {activeMilestoneForModal.label !== "台電細部協商" && activeMilestoneForModal.label !== "建管免雜備查/雜照" && (
                                     <div className="space-y-4">
-                                        {(activeMilestoneForModal.label === "台電併聯審查" || activeMilestoneForModal.label === "同意備案") && (
+                                        {(activeMilestoneForModal.label === "台電併聯審查" || activeMilestoneForModal.label === "同意備案" || activeMilestoneForModal.label === "設備登記" || activeMilestoneForModal.label === "開始躉售") && (
                                             <div className="flex bg-slate-900 p-1 rounded-xl border border-white/10">
                                                 <button
                                                     type="button"
                                                     onClick={() => setUploadFileType("submission")}
                                                     className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${uploadFileType === "submission" ? "bg-amber-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"}`}
                                                 >
-                                                    申請書
+                                                    申請/送件資料
                                                 </button>
                                                 <button
                                                     type="button"
@@ -835,7 +980,7 @@ export default function ProcessPage() {
                                         <div>
                                             <label className="block text-sm font-bold text-slate-400 mb-2 uppercase tracking-widest">
                                                 {activeMilestoneForModal.label === "購電簽約 (PPA)" ? "上傳合約 (PDF)" :
-                                                    uploadFileType === "submission" ? "上傳申請書 (PDF)" : "上傳核准函 (PDF)"}
+                                                    uploadFileType === "submission" ? "上傳申請書/送件文件 (PDF)" : "上傳核准函 (PDF)"}
                                             </label>
                                             <div className="relative">
                                                 <input

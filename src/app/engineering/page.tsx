@@ -9,8 +9,10 @@ import {
     BOMItem,
     ConstructionLog,
     SafetyNotice,
+    TestRunReport,
     mockBOM,
-    mockLogs
+    mockLogs,
+    mockReports
 } from "@/lib/data/engineering";
 import { safetyTranslations, Language } from "@/lib/data/safety-translations";
 
@@ -29,10 +31,12 @@ export default function EngineeringPage() {
     const [drawings, setDrawings] = useState<Drawing[]>([]);
     const [bomItems, setBomItems] = useState<BOMItem[]>([]);
     const [logs, setLogs] = useState<ConstructionLog[]>([]);
+    const [reports, setReports] = useState<TestRunReport[]>([]);
     const [safetyNotices, setSafetyNotices] = useState<SafetyNotice[]>([]);
 
     const [isLoaded, setIsLoaded] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [isReportUploadModalOpen, setIsReportUploadModalOpen] = useState(false);
     const [selectedDrawing, setSelectedDrawing] = useState<Drawing | null>(null);
     const [uploadProjectId, setUploadProjectId] = useState("");
     const [uploadType, setUploadType] = useState<"結構" | "電力">("電力");
@@ -57,6 +61,15 @@ export default function EngineeringPage() {
 
     // Log Modal States
     const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+    const [logProjectId, setLogProjectId] = useState("");
+    const [logType, setLogType] = useState<"結構" | "電力">("結構");
+    const [logDescription, setLogDescription] = useState("");
+    const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
+    const [logItems, setLogItems] = useState<{ category: "結構" | "電力", description: string, quantity: number, unit: string, totalTarget: number }[]>([]);
+    const [logPhotos, setLogPhotos] = useState<File[]>([]);
+    const [logVideos, setLogVideos] = useState<File[]>([]);
+    const [logIsFinal, setLogIsFinal] = useState(false);
+    const [logWorkerCount, setLogWorkerCount] = useState<number>(0);
 
     useEffect(() => {
         // Load Drawings
@@ -96,6 +109,14 @@ export default function EngineeringPage() {
             setLogs(mockLogs);
         }
 
+        // Load Reports
+        const savedReports = localStorage.getItem("gp_engineering_reports");
+        if (savedReports) {
+            setReports(JSON.parse(savedReports));
+        } else {
+            setReports(mockReports);
+        }
+
         // Handle Query Params for Safety Tab (LINE share)
         const params = new URLSearchParams(window.location.search);
         const tab = params.get("tab");
@@ -117,8 +138,9 @@ export default function EngineeringPage() {
             localStorage.setItem("gp_engineering_drawings", JSON.stringify(drawings));
             localStorage.setItem("gp_engineering_bom", JSON.stringify(bomItems));
             localStorage.setItem("gp_engineering_logs", JSON.stringify(logs));
+            localStorage.setItem("gp_engineering_reports", JSON.stringify(reports));
         }
-    }, [drawings, bomItems, logs, isLoaded]);
+    }, [drawings, bomItems, logs, reports, isLoaded]);
 
     const handleShareToLINE = () => {
         const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
@@ -152,6 +174,29 @@ export default function EngineeringPage() {
         dispatchGPLineMessage(project.id, `工程設計監造部已上傳「${uploadType}」文件 (${uploadFile.name})，目前狀態：${uploadStatus}`, "工程設計監造部門", "工程設計監造部助理");
     };
 
+    const handleReportUpload = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!uploadProjectId || !uploadFile) return;
+
+        const project = mockProcesses.find(p => p.id === uploadProjectId);
+        if (!project) return;
+
+        const newReport: TestRunReport = {
+            id: `r_${Date.now()}`,
+            projectId: project.id,
+            projectName: project.projectName,
+            name: uploadFile.name,
+            date: new Date().toISOString().split('T')[0]
+        };
+
+        setReports([newReport, ...reports]);
+        setIsReportUploadModalOpen(false);
+        setUploadFile(null);
+        setUploadProjectId("");
+
+        dispatchGPLineMessage(project.id, `工程設計監造部已上傳「完工/試運轉報告」 (${uploadFile.name})`, "工程設計監造部門", "工程設計監造部現場主管");
+    };
+
     const handleUpdateDrawing = (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedDrawing) return;
@@ -172,6 +217,36 @@ export default function EngineeringPage() {
         setUploadFile(null);
 
         dispatchGPLineMessage(selectedDrawing.projectId, `工程設計監造部已更新「${selectedDrawing.type}」文件狀態為：${selectedDrawing.status}`, "工程設計監造部門", "工程設計監造部助理");
+    };
+
+    const handleSaveLog = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!logProjectId || !logDescription) return;
+
+        const newLog: ConstructionLog = {
+            id: `l_${Date.now()}`,
+            projectId: logProjectId,
+            date: logDate,
+            type: logType,
+            description: logDescription,
+            items: logItems,
+            mediaUrls: logPhotos.map(f => URL.createObjectURL(f)), // Mocking URLs for preview
+            videoUrls: logVideos.map(f => URL.createObjectURL(f)), // Mocking URLs for preview
+            author: "工地主任-張三", // Mocking the author
+            isFinalEntry: logIsFinal,
+            workerCount: logWorkerCount
+        };
+
+        setLogs([newLog, ...logs]);
+        setIsLogModalOpen(false);
+        // Reset form
+        setLogDescription("");
+        setLogItems([]);
+        setLogProjectId("");
+        setLogPhotos([]);
+        setLogVideos([]);
+        setLogIsFinal(false);
+        setLogWorkerCount(0);
     };
 
     return (
@@ -217,6 +292,13 @@ export default function EngineeringPage() {
                             id: "safety", label: "危害告知", icon: (
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 17c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            )
+                        },
+                        {
+                            id: "reports", label: "完工/試運轉報告", icon: (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                             )
                         },
@@ -363,8 +445,21 @@ export default function EngineeringPage() {
                                         <div key={log.id} className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-cyan-500/30 transition-all">
                                             <div className="flex justify-between items-start mb-4">
                                                 <div>
-                                                    <p className="text-lg font-bold text-white">{log.date}</p>
-                                                    <p className="text-xs text-slate-500">記錄者：{log.author}</p>
+                                                    <div className="flex items-center gap-3 mb-1">
+                                                        <p className="text-lg font-bold text-white">{log.date}</p>
+                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${log.type === '結構' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'}`}>
+                                                            {log.type}類工程
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-4 mt-1">
+                                                        <p className="text-xs text-slate-500">記錄者：{log.author}</p>
+                                                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/5 border border-white/10">
+                                                            <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                            </svg>
+                                                            <span className="text-[10px] font-bold text-slate-400">出工 {log.workerCount} 人</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div className="flex gap-2">
                                                     {log.mediaUrls.length > 0 && (
@@ -372,8 +467,22 @@ export default function EngineeringPage() {
                                                             {log.mediaUrls.length} 媒體檔案
                                                         </span>
                                                     )}
+                                                    {log.videoUrls && log.videoUrls.length > 0 && (
+                                                        <span className="bg-violet-500/10 text-violet-400 text-[10px] px-2 py-1 rounded font-bold">
+                                                            {log.videoUrls.length} 影片檔案
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
+
+                                            {log.description && (
+                                                <div className="mb-4 p-4 rounded-xl bg-black/20 border border-white/5">
+                                                    <p className="text-sm text-slate-300 leading-relaxed italic">
+                                                        「 {log.description} 」
+                                                    </p>
+                                                </div>
+                                            )}
+
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {log.items.map((item, idx) => {
                                                     const percent = Math.round((item.quantity / item.totalTarget) * 100);
@@ -601,6 +710,52 @@ export default function EngineeringPage() {
                                                 </button>
                                             </div>
                                         </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === "reports" && (
+                            <div className="glass p-8 rounded-3xl border-white/5">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-xl font-bold flex items-center gap-2">
+                                        <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        完工/試運轉報告列表
+                                    </h2>
+                                    <button
+                                        onClick={() => setIsReportUploadModalOpen(true)}
+                                        className="bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-white px-4 py-2 rounded-xl text-sm font-bold transition-all border border-cyan-500/30">
+                                        上傳報告 +
+                                    </button>
+                                </div>
+                                <div className="space-y-4">
+                                    {reports.map((report) => (
+                                        <div
+                                            key={report.id}
+                                            className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-cyan-500/30 transition-all cursor-pointer group"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center group-hover:bg-cyan-500/10 transition-colors">
+                                                    <svg className="w-5 h-5 text-slate-400 group-hover:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-sm group-hover:text-cyan-400 transition-colors">{report.name}</p>
+                                                    <p className="text-[10px] text-slate-500">{report.projectName} · {report.date}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-[10px] px-2 py-1 rounded font-bold bg-emerald-500/20 text-emerald-400">
+                                                    已上傳
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {reports.length === 0 && (
+                                        <div className="text-center py-12 text-slate-500 italic">尚無完工/試運轉報告</div>
                                     )}
                                 </div>
                             </div>
@@ -905,6 +1060,334 @@ export default function EngineeringPage() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                     </svg>
                                     儲存變更
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            {/* Log Modal */}
+            {isLogModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setIsLogModalOpen(false)} />
+                    <div className="glass w-full max-w-2xl rounded-[2.5rem] p-10 relative animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-8">
+                            <h2 className="text-xl font-bold flex items-center gap-3">
+                                <div className="p-2 bg-cyan-500/20 rounded-xl">
+                                    <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                填寫施工日誌
+                            </h2>
+                            <button onClick={() => setIsLogModalOpen(false)} className="text-slate-400 hover:text-white p-2">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <form onSubmit={handleSaveLog} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-2">所屬專案</label>
+                                    <select
+                                        className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500 text-white"
+                                        value={logProjectId}
+                                        onChange={e => setLogProjectId(e.target.value)}
+                                        required
+                                    >
+                                        <option value="">請選擇專案...</option>
+                                        {mockProcesses.map(p => <option key={p.id} value={p.id}>{p.projectName}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-2">日誌類別</label>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {["電力", "結構"].map(type => (
+                                            <label key={type} className="cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="logType"
+                                                    className="sr-only peer"
+                                                    checked={logType === type}
+                                                    onChange={() => setLogType(type as any)}
+                                                />
+                                                <div className="text-center py-3 rounded-xl border border-white/20 bg-slate-900 peer-checked:bg-cyan-500/20 peer-checked:border-cyan-500 transition-all text-sm font-medium text-slate-300 peer-checked:text-cyan-400">
+                                                    {type}類日誌
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-2">今日施工日期</label>
+                                    <input
+                                        type="date"
+                                        value={logDate}
+                                        onChange={e => setLogDate(e.target.value)}
+                                        className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500 text-white"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-2">當日出工人數 (Workers)</label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            value={logWorkerCount}
+                                            onChange={e => setLogWorkerCount(Number(e.target.value))}
+                                            placeholder="請輸入人數..."
+                                            className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500 text-white pr-12"
+                                            min="0"
+                                            required
+                                        />
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-500 font-medium tracking-wider">人</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-2">施工案場說明 (Description)</label>
+                                <textarea
+                                    value={logDescription}
+                                    onChange={e => setLogDescription(e.target.value)}
+                                    placeholder="描述今日進度與現場狀況..."
+                                    className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500 text-white min-h-[100px]"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-2">進度明細 (Progress Items)</label>
+                                <div className="space-y-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setLogItems([...logItems, { category: logType, description: "", quantity: 0, unit: "支", totalTarget: 100 }])}
+                                        className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                        新增項目
+                                    </button>
+                                    {logItems.map((item, idx) => (
+                                        <div key={idx} className="flex gap-3 items-center bg-white/5 p-4 rounded-xl border border-white/5">
+                                            <input
+                                                type="text"
+                                                placeholder="工作內容 (如: 鋁支架安裝)"
+                                                value={item.description}
+                                                onChange={e => {
+                                                    const newItems = [...logItems];
+                                                    newItems[idx].description = e.target.value;
+                                                    setLogItems(newItems);
+                                                }}
+                                                className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs flex-1"
+                                            />
+                                            <input
+                                                type="number"
+                                                placeholder="數量"
+                                                value={item.quantity}
+                                                onChange={e => {
+                                                    const newItems = [...logItems];
+                                                    newItems[idx].quantity = Number(e.target.value);
+                                                    setLogItems(newItems);
+                                                }}
+                                                className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs w-20"
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="單位"
+                                                value={item.unit}
+                                                onChange={e => {
+                                                    const newItems = [...logItems];
+                                                    newItems[idx].unit = e.target.value;
+                                                    setLogItems(newItems);
+                                                }}
+                                                className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs w-16"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setLogItems(logItems.filter((_, i) => i !== idx))}
+                                                className="text-rose-500 p-1"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-2">上傳照片 (Upload Photos)</label>
+                                    <input
+                                        type="file"
+                                        id="logPhotosInput"
+                                        multiple
+                                        accept="image/*"
+                                        className="sr-only"
+                                        onChange={e => {
+                                            const files = Array.from(e.target.files || []);
+                                            setLogPhotos(prev => [...prev, ...files]);
+                                        }}
+                                    />
+                                    <div
+                                        onClick={() => document.getElementById('logPhotosInput')?.click()}
+                                        className="border-2 border-dashed border-white/10 rounded-2xl p-6 text-center hover:border-cyan-500/30 transition-all cursor-pointer bg-white/5 group"
+                                    >
+                                        <svg className="w-8 h-8 text-slate-500 mx-auto mb-2 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <p className="text-xs text-slate-500 group-hover:text-slate-300 transition-colors">點擊或拖放照片 (可多選)</p>
+                                    </div>
+                                    {logPhotos.length > 0 && (
+                                        <div className="mt-3 space-y-2">
+                                            {logPhotos.map((file, idx) => (
+                                                <div key={idx} className="flex items-center justify-between bg-black/40 rounded-lg px-3 py-2 text-[10px] border border-white/5">
+                                                    <span className="text-slate-300 truncate max-w-[150px]">{file.name}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setLogPhotos(logPhotos.filter((_, i) => i !== idx));
+                                                        }}
+                                                        className="text-rose-500 hover:text-rose-400 p-1"
+                                                    >
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-2">上傳影片 (Upload Videos)</label>
+                                    <input
+                                        type="file"
+                                        id="logVideosInput"
+                                        multiple
+                                        accept="video/*"
+                                        className="sr-only"
+                                        onChange={e => {
+                                            const files = Array.from(e.target.files || []);
+                                            setLogVideos(prev => [...prev, ...files]);
+                                        }}
+                                    />
+                                    <div
+                                        onClick={() => document.getElementById('logVideosInput')?.click()}
+                                        className="border-2 border-dashed border-white/10 rounded-2xl p-6 text-center hover:border-violet-500/30 transition-all cursor-pointer bg-white/5 group"
+                                    >
+                                        <svg className="w-8 h-8 text-slate-500 mx-auto mb-2 group-hover:text-violet-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                        <p className="text-xs text-slate-500 group-hover:text-slate-300 transition-colors">點擊或拖放影片 (可多選)</p>
+                                    </div>
+                                    {logVideos.length > 0 && (
+                                        <div className="mt-3 space-y-2">
+                                            {logVideos.map((file, idx) => (
+                                                <div key={idx} className="flex items-center justify-between bg-black/40 rounded-lg px-3 py-2 text-[10px] border border-white/5">
+                                                    <span className="text-slate-300 truncate max-w-[150px]">{file.name}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setLogVideos(logVideos.filter((_, i) => i !== idx));
+                                                        }}
+                                                        className="text-rose-500 hover:text-rose-400 p-1"
+                                                    >
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="pt-4 pb-2">
+                                <label className="flex items-center gap-3 cursor-pointer group bg-emerald-500/5 hover:bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 transition-all">
+                                    <input
+                                        type="checkbox"
+                                        checked={logIsFinal}
+                                        onChange={e => setLogIsFinal(e.target.checked)}
+                                        className="w-5 h-5 rounded border-emerald-500/50 text-emerald-500 focus:ring-emerald-500 bg-slate-900"
+                                    />
+                                    <div>
+                                        <p className="text-sm font-bold text-emerald-400">已完工確認 (Mark as Completed)</p>
+                                        <p className="text-[10px] text-emerald-500/60 mt-0.5">勾選此項表示該類別（{logType}類）工程已全部施工完成，將更新至專案管理系統。</p>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div className="pt-4">
+                                <button type="submit" className="w-full bg-cyan-600 hover:bg-cyan-500 py-4 rounded-2xl font-bold shadow-lg shadow-cyan-500/20 transition-all text-white flex justify-center items-center gap-2">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    確認儲存日誌
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Report Upload Modal */}
+            {isReportUploadModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setIsReportUploadModalOpen(false)} />
+                    <div className="glass w-full max-w-md rounded-[2.5rem] p-10 relative animate-in fade-in zoom-in duration-300">
+                        <div className="flex justify-between items-center mb-8">
+                            <h2 className="text-xl font-bold flex items-center gap-3">
+                                <div className="p-2 bg-emerald-500/20 rounded-xl">
+                                    <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                                上傳完工/試運轉報告
+                            </h2>
+                            <button onClick={() => setIsReportUploadModalOpen(false)} className="text-slate-400 hover:text-white p-2">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <form onSubmit={handleReportUpload} className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-2">所屬專案</label>
+                                <select
+                                    className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500 text-white"
+                                    value={uploadProjectId}
+                                    onChange={e => setUploadProjectId(e.target.value)}
+                                    required
+                                >
+                                    <option value="">請選擇專案...</option>
+                                    {mockProcesses.map(p => <option key={p.id} value={p.id}>{p.projectName}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-2">報告檔案 (PDF)</label>
+                                <div className="relative">
+                                    <input
+                                        type="file"
+                                        id="reportFileUpload"
+                                        onChange={e => setUploadFile(e.target.files?.[0] || null)}
+                                        className="sr-only"
+                                        required
+                                    />
+                                    <label htmlFor="reportFileUpload" className="w-full flex items-center gap-3 px-4 py-3 border border-white/20 bg-slate-900 rounded-xl cursor-pointer hover:border-emerald-500 transition-colors">
+                                        <svg className="w-5 h-5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                        </svg>
+                                        <span className={`text-sm ${uploadFile ? "text-white" : "text-slate-500"} truncate block w-full`}>
+                                            {uploadFile ? uploadFile.name : "選擇檔案..."}
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div className="pt-2">
+                                <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 py-4 rounded-2xl font-bold shadow-lg shadow-emerald-500/20 transition-all text-white flex justify-center items-center gap-2">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                    </svg>
+                                    確認上傳
                                 </button>
                             </div>
                         </form>
